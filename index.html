@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나도 철인 돼보카?</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        #memberSelect:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
+            width: auto;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-secondary.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary.active:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .sport-tabs {
+            display: flex;
+            gap: 0;
+        }
+
+        .sport-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: #f5f5f5;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .sport-tab:hover {
+            background: #e0e0e0;
+        }
+
+        .sport-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ff3838;
+        }
+
+        .btn-kakao {
+            background: #fee500;
+            color: #000;
+        }
+
+        .btn-kakao:hover {
+            background: #fdd835;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            width: auto;
+            margin: 5px;
+        }
+
+        .member-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .member-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .member-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .member-card.active {
+            border-color: #667eea;
+            background: #e8eaf6;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .stats-card h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #fee500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: width 0.5s;
+            color: #000;
+        }
+
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item-info {
+            flex: 1;
+        }
+
+        .history-item-date {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .history-item-details {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+
+        .badge-swim {
+            background: #2196F3;
+            color: white;
+        }
+
+        .badge-run {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-cycle {
+            background: #FF9800;
+            color: white;
+        }
+
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .comparison-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .comparison-card h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #667eea;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #c62828;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-buttons .btn {
+            flex: 1;
+        }
+
+        .ranking-list {
+            margin-top: 15px;
+        }
+
+        .ranking-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ranking-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            min-width: 30px;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+
+        .icon-img {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <img src="images/iron-man.png" alt="아이언맨" class="icon-img" style="width: 24px; height: 24px;">
+                나도 철인 돼보카?
+            </h1>
+            <p>목표 달성을 향한 여정을 함께하세요</p>
+        </div>
+
+        <div class="content">
+            <!-- 네비게이션 -->
+            <div class="nav-buttons" id="navButtons">
+                <button class="btn btn-secondary" onclick="showSection('register')" data-section="register">멤버 등록</button>
+                <button class="btn btn-secondary" onclick="showSection('mileage')" data-section="mileage">마일리지 관리</button>
+                <button class="btn btn-secondary" onclick="showSection('history')" data-section="history">이력 조회</button>
+            </div>
+
+            <!-- 멤버 등록 섹션 -->
+            <div id="registerSection" class="section">
+                <h2 class="section-title">
+                    <span class="icon">👤</span>
+                    멤버 등록
+                </h2>
+                <div id="registerAlert"></div>
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" id="memberName" placeholder="멤버 이름을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label>종목 선택</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="radio" id="sportSwim" name="sport" value="수영" onchange="updateRegisterButtonText()">
+                            <label for="sportSwim">수영</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="sportRun" name="sport" value="러닝" onchange="updateRegisterButtonText()">
+                            <label for="sportRun">러닝</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="sportCycle" name="sport" value="사이클" onchange="updateRegisterButtonText()">
+                            <label for="sportCycle">사이클</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>년도</label>
+                    <select id="memberYear" onchange="updateRegisterButtonText()"></select>
+                </div>
+                <div class="form-group">
+                    <label>월</label>
+                    <select id="memberMonth" onchange="updateRegisterButtonText()"></select>
+                </div>
+                <div class="form-group">
+                    <label>목표 마일리지 (m)</label>
+                    <input type="number" id="targetMileage" placeholder="목표 거리를 미터 단위로 입력하세요" min="0" oninput="updateRegisterButtonText()">
+                </div>
+                <button class="btn btn-primary" id="registerMemberBtn" onclick="registerMember()">목표 마일리지 등록</button>
+            </div>
+
+            <!-- 마일리지 관리 섹션 -->
+            <div id="mileageSection" class="section hidden">
+                <h2 class="section-title">
+                    <span class="icon">📊</span>
+                    마일리지 관리
+                </h2>
+                
+                <!-- 멤버 선택 -->
+                <div class="form-group">
+                    <label>멤버 선택</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="memberSelect" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s;" onchange="onMemberSelectChange()">
+                            <option value="">선택하세요</option>
+                        </select>
+                        <div class="checkbox-item" style="margin: 0; white-space: nowrap;">
+                            <input type="checkbox" id="fixedMemberCheckbox" onchange="fixedSelectedMember()">
+                            <label for="fixedMemberCheckbox" style="margin: 0; font-size: 14px; cursor: pointer;">선택 멤버 고정</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 마일리지 등록 -->
+                <div id="mileageForm" class="form-group hidden">
+                    <h3 class="section-title" style="font-size: 16px;">
+                        <span class="icon">➕</span>
+                        마일리지 등록
+                    </h3>
+                    <div class="form-group">
+                        <label>종목</label>
+                        <select id="mileageSport" onchange="onMileageSportChange()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>년도</label>
+                        <select id="mileageYear" onchange="onMileageDateChange()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>월</label>
+                        <select id="mileageMonth" onchange="onMileageDateChange()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>마일리지 (m)</label>
+                        <input type="number" id="mileageDistance" placeholder="거리를 미터 단위로 입력하세요" min="0" step="0.01" oninput="updateMileageButtonText()">
+                        <div id="existingMileageInfo" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                    </div>
+                    <button class="btn btn-primary" id="addMileageBtn" onclick="addOrUpdateMileage()">마일리지 추가</button>
+                </div>
+
+                <!-- 현황 표시 -->
+                <div id="mileageStats" class="hidden">
+                    <!-- 종목별 탭 -->
+                    <div id="sportTabs" class="sport-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;"></div>
+
+                    <div class="stats-card">
+                        <h3>
+                            <span class="icon">🎯</span>
+                            목표 달성률
+                        </h3>
+                        <div id="progressContainer"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="section-title" style="font-size: 16px;">
+                            <span class="icon">📈</span>
+                            <span id="yearlyChartTitle">년도별 목표 달성률 추이</span>
+                        </h3>
+                        <div style="position: relative; height: 400px;">
+                            <canvas id="yearlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="section-title" style="font-size: 16px;">
+                            <span class="icon">⚖️</span>
+                            멤버 비교
+                        </h3>
+                        <div class="form-group">
+                            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                <select id="compareMemberSelect" style="flex: 1; min-width: 200px; width: 100%;">
+                                    <option value="">선택하세요</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="addCompareMember()" style="white-space: nowrap;">추가</button>
+                            </div>
+                        </div>
+                        <div id="comparisonContainer" class="comparison-container"></div>
+                    </div>
+
+                    <button class="btn btn-kakao" onclick="shareKakao()" style="margin-top: 20px;">
+                        <span class="icon">💬</span>
+                        카카오톡으로 공유하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- 이력 조회 섹션 -->
+            <div id="historySection" class="section hidden">
+                <h2 class="section-title">
+                    <span class="icon">📋</span>
+                    이력 조회
+                </h2>
+                <div class="form-group">
+                    <label>멤버 선택</label>
+                    <select id="historyMember" onchange="loadHistory()">
+                        <option value="">선택하세요</option>
+                    </select>
+                </div>
+                <div id="historyList" class="history-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase 초기화
+        const supabaseUrl = 'https://tsropshzbqrfladkgwsr.supabase.co';
+        const supabaseKey = 'sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 카카오톡 SDK 초기화
+        Kakao.init('41ec28afdb74a9849655aeb3dc4096aa');
+
+        let currentMember = null;
+        let allMembers = [];
+        let currentSport = '수영'; // 기본 선택 종목
+        let compareMembersBySport = { // 종목별 비교 대상 멤버 목록
+            '수영': [],
+            '러닝': [],
+            '사이클': []
+        };
+        let yearlyChartInstance = null; // Chart.js 인스턴스 저장
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 약간의 지연을 두어 DOM이 완전히 로드되도록 함
+            setTimeout(function() {
+                initializeYearMonth();
+                loadMembers().then(() => {
+                    // 멤버 로드 후 저장된 멤버 자동 선택
+                    loadFixedMember();
+                });
+                showSection('mileage');
+            }, 100);
+        });
+
+        // 년도/월 선택 옵션 초기화
+        function initializeYearMonth() {
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+
+            // 멤버 등록용
+            const memberYear = document.getElementById('memberYear');
+            const memberMonth = document.getElementById('memberMonth');
+            
+            // 마일리지 등록용
+            const mileageYear = document.getElementById('mileageYear');
+            const mileageMonth = document.getElementById('mileageMonth');
+
+            // 요소 존재 확인
+            if (!memberYear || !memberMonth || !mileageYear || !mileageMonth) {
+                console.error('Select box 요소를 찾을 수 없습니다.');
+                console.log('memberYear:', memberYear, 'memberMonth:', memberMonth, 'mileageYear:', mileageYear, 'mileageMonth:', mileageMonth);
+                return;
+            }
+
+            // 기존 옵션 제거
+            memberYear.innerHTML = '';
+            memberMonth.innerHTML = '';
+            mileageYear.innerHTML = '';
+            mileageMonth.innerHTML = '';
+
+            // 2026년부터 이후 10년 (2026~2035)
+            const startYear = 2026;
+            const endYear = 2035;
+            const defaultYear = Math.max(startYear, Math.min(currentYear, endYear));
+
+            console.log('년도 초기화:', startYear, '~', endYear, '기본값:', defaultYear);
+
+            for (let year = startYear; year <= endYear; year++) {
+                const option1 = document.createElement('option');
+                option1.value = year;
+                option1.textContent = year + '년';
+                if (year === defaultYear) option1.selected = true;
+                memberYear.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = year;
+                option2.textContent = year + '년';
+                if (year === defaultYear) option2.selected = true;
+                mileageYear.appendChild(option2);
+            }
+
+            console.log('년도 옵션 추가 완료. memberYear 옵션 수:', memberYear.options.length, 'mileageYear 옵션 수:', mileageYear.options.length);
+
+            for (let month = 1; month <= 12; month++) {
+                const option1 = document.createElement('option');
+                option1.value = month;
+                option1.textContent = month + '월';
+                if (month === currentMonth) option1.selected = true;
+                memberMonth.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = month;
+                option2.textContent = month + '월';
+                if (month === currentMonth) option2.selected = true;
+                mileageMonth.appendChild(option2);
+            }
+        }
+
+        // 섹션 전환
+        function showSection(section) {
+            // 모든 섹션 숨기기
+            document.getElementById('registerSection').classList.add('hidden');
+            document.getElementById('mileageSection').classList.add('hidden');
+            document.getElementById('historySection').classList.add('hidden');
+
+            // 모든 탭 버튼에서 active 클래스 제거
+            document.querySelectorAll('.nav-buttons .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 선택된 탭 버튼에 active 클래스 추가
+            const activeButton = document.querySelector(`.nav-buttons .btn[data-section="${section}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+
+            if (section === 'register') {
+                document.getElementById('registerSection').classList.remove('hidden');
+                // 년도/월 옵션이 비어있으면 다시 초기화
+                if (document.getElementById('memberYear').options.length === 0) {
+                    initializeYearMonth();
+                }
+            } else if (section === 'mileage') {
+                document.getElementById('mileageSection').classList.remove('hidden');
+                loadMembers();
+                // 년도/월 옵션이 비어있으면 다시 초기화
+                if (document.getElementById('mileageYear').options.length === 0) {
+                    initializeYearMonth();
+                }
+            } else if (section === 'history') {
+                document.getElementById('historySection').classList.remove('hidden');
+                loadHistoryMembers();
+            }
+        }
+
+        // 이력 조회용 멤버 목록 로드
+        async function loadHistoryMembers() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('iron_members')
+                    .select('*')
+                    .order('name');
+
+                if (error) throw error;
+
+                allMembers = data || [];
+                updateHistoryMemberSelect();
+                
+                // 저장된 멤버가 있으면 자동 선택 및 이력 로드
+                const fixedMemberId = localStorage.getItem('fixedMemberId');
+                if (fixedMemberId) {
+                    const member = allMembers.find(m => m.id === fixedMemberId);
+                    if (member) {
+                        const historyMemberSelect = document.getElementById('historyMember');
+                        historyMemberSelect.value = fixedMemberId;
+                        loadHistory();
+                    }
+                }
+            } catch (error) {
+                console.error('멤버 로드 오류:', error);
+            }
+        }
+
+        // 멤버 목록 로드
+        async function loadMembers() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('iron_members')
+                    .select('*')
+                    .order('name');
+
+                if (error) throw error;
+
+                allMembers = data || [];
+                displayMemberList();
+                updateHistoryMemberSelect();
+                // updateCompareMemberSelects는 selectMember에서 호출됨
+                return Promise.resolve();
+            } catch (error) {
+                console.error('멤버 로드 오류:', error);
+                return Promise.reject(error);
+            }
+        }
+
+        // 멤버 목록 표시 (select box에 옵션 추가)
+        function displayMemberList() {
+            const memberSelect = document.getElementById('memberSelect');
+            // 기존 옵션 제거 (선택하세요 제외)
+            while (memberSelect.options.length > 1) {
+                memberSelect.remove(1);
+            }
+
+            allMembers.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.name;
+                option.dataset.member = JSON.stringify(member);
+                memberSelect.appendChild(option);
+            });
+
+            // 저장된 멤버가 있으면 자동 선택
+            loadFixedMember();
+        }
+
+        // 멤버 선택 변경 이벤트
+        function onMemberSelectChange() {
+            const memberSelect = document.getElementById('memberSelect');
+            const selectedValue = memberSelect.value;
+            const saveCheckbox = document.getElementById('fixedMemberCheckbox');
+            
+            if (!selectedValue) {
+                currentMember = null;
+                document.getElementById('mileageForm').classList.add('hidden');
+                document.getElementById('mileageStats').classList.add('hidden');
+                saveCheckbox.checked = false;
+                localStorage.removeItem('fixedMemberId');
+                return;
+            }
+
+            const selectedOption = memberSelect.options[memberSelect.selectedIndex];
+            const member = JSON.parse(selectedOption.dataset.member);
+            selectMember(member);
+            
+            // 저장된 멤버와 일치하면 체크박스 체크
+            const fixedMemberId = localStorage.getItem('fixedMemberId');
+            saveCheckbox.checked = (fixedMemberId === selectedValue);
+        }
+
+        // 멤버 선택
+        async function selectMember(member) {
+            currentMember = member;
+
+            // 마일리지 등록 폼 표시
+            document.getElementById('mileageForm').classList.remove('hidden');
+            updateMileageSportSelect(member);
+            
+            // 오늘 날짜 기준으로 년도와 월 설정
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            
+            const mileageYear = document.getElementById('mileageYear');
+            const mileageMonth = document.getElementById('mileageMonth');
+            
+            if (mileageYear) mileageYear.value = currentYear;
+            if (mileageMonth) mileageMonth.value = currentMonth;
+            
+            // 멤버의 종목에 따라 탭 생성
+            createSportTabs(member);
+            
+            // 비교 멤버 선택 목록 업데이트 (현재 종목 기준)
+            await updateCompareMemberSelects();
+            
+            // 입력 필드 초기화
+            document.getElementById('mileageDistance').value = '';
+            document.getElementById('existingMileageInfo').innerHTML = '';
+            
+            // 버튼 텍스트 초기화
+            updateMileageButtonText();
+            
+            // 기존 마일리지 조회
+            loadExistingMileage();
+            
+            // 현황 로드
+            loadMileageStats();
+            
+            // 비교 표시 업데이트
+            await updateComparison();
+        }
+
+        // 선택 멤버 고정
+        function fixedSelectedMember() {
+            const checkbox = document.getElementById('fixedMemberCheckbox');
+            const memberSelect = document.getElementById('memberSelect');
+            
+            if (checkbox.checked && memberSelect.value) {
+                localStorage.setItem('fixedMemberId', memberSelect.value);
+            } else {
+                localStorage.removeItem('fixedMemberId');
+            }
+        }
+
+        // 고정된 멤버 로드
+        function loadFixedMember() {
+            const fixedMemberId = localStorage.getItem('fixedMemberId');
+            if (fixedMemberId && allMembers.length > 0) {
+                const member = allMembers.find(m => m.id === fixedMemberId);
+                if (member) {
+                    const memberSelect = document.getElementById('memberSelect');
+                    memberSelect.value = fixedMemberId;
+                    document.getElementById('fixedMemberCheckbox').checked = true;
+                    selectMember(member);
+                }
+            }
+        }
+
+        // 마일리지 종목 선택 업데이트
+        function updateMileageSportSelect(member) {
+            const sportSelect = document.getElementById('mileageSport');
+            sportSelect.innerHTML = '<option value="">선택하세요</option>';
+            
+            const sports = member.sports ? member.sports.split(',') : [];
+            sports.forEach(sport => {
+                const option = document.createElement('option');
+                option.value = sport.trim();
+                option.textContent = sport.trim();
+                sportSelect.appendChild(option);
+            });
+        }
+
+        // 년도/월 변경 이벤트
+        async function onMileageDateChange() {
+            loadExistingMileage();
+            updateMileageButtonText();
+            if (currentMember) {
+                loadMileageStats();
+                await updateComparison();
+            }
+        }
+
+        // 종목 변경 시
+        function onMileageSportChange() {
+            loadExistingMileage();
+            updateMileageButtonText();
+        }
+
+        // 기존 마일리지 조회 및 표시 (누적 합계)
+        async function loadExistingMileage() {
+            if (!currentMember) return;
+
+            const sport = document.getElementById('mileageSport').value;
+            const year = document.getElementById('mileageYear').value;
+            const month = document.getElementById('mileageMonth').value;
+            const infoDiv = document.getElementById('existingMileageInfo');
+            const distanceInput = document.getElementById('mileageDistance');
+
+            if (!sport || !year || !month) {
+                infoDiv.innerHTML = '';
+                distanceInput.value = '';
+                return;
+            }
+
+            try {
+                // 해당 년도/월/종목의 모든 마일리지 레코드 조회
+                const { data, error } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('sport', sport)
+                    .eq('year', parseInt(year))
+                    .eq('month', parseInt(month))
+                    .order('created_at', { ascending: false });
+
+                if (error && error.code !== 'PGRST116') {
+                    throw error;
+                }
+
+                if (data && data.length > 0) {
+                    // 기존 마일리지들의 합계 계산
+                    const totalMileage = data.reduce((sum, item) => sum + item.distance, 0);
+                    const recordCount = data.length;
+                    const km = Math.floor((totalMileage / 1000) * 100) / 100;
+                    const kmText = km.toFixed(2);
+                    
+                    // 입력 필드는 비워둠 (새로운 마일리지만 입력)
+                    distanceInput.value = '';
+                    
+                    // 기존 마일리지 합계 표시
+                    infoDiv.innerHTML = `<span style="color: #2e7d32;">✓ 현재 누적 마일리지: ${totalMileage.toLocaleString()}m (${kmText} km) - ${recordCount}건 등록됨</span>`;
+                    // 버튼 텍스트 업데이트
+                    updateMileageButtonText();
+                } else {
+                    // 기존 마일리지가 없는 경우
+                    distanceInput.value = '';
+                    infoDiv.innerHTML = '<span style="color: #666;">새로운 마일리지를 등록합니다.</span>';
+                    // 버튼 텍스트 업데이트
+                    updateMileageButtonText();
+                }
+            } catch (error) {
+                console.error('기존 마일리지 조회 오류:', error);
+                distanceInput.value = '';
+                infoDiv.innerHTML = '';
+            }
+        }
+
+        // 마일리지 추가 버튼 텍스트 업데이트
+        function updateMileageButtonText() {
+            const sport = document.getElementById('mileageSport').value;
+            const distance = parseFloat(document.getElementById('mileageDistance').value);
+            const addMileageBtn = document.getElementById('addMileageBtn');
+            
+            if (!addMileageBtn) return;
+            
+            if (sport && distance && distance > 0) {
+                // 미터를 km로 환산하고 소수점 두 번째 자리까지만 표시 (버림)
+                const km = Math.floor((distance / 1000) * 100) / 100;
+                const kmText = km.toFixed(2);
+                addMileageBtn.textContent = `${sport} ${kmText} km 마일리지 추가`;
+            } else {
+                addMileageBtn.textContent = '마일리지 추가';
+            }
+        }
+
+        // 등록 버튼 텍스트 업데이트
+        function updateRegisterButtonText() {
+            const year = document.getElementById('memberYear').value;
+            const month = document.getElementById('memberMonth').value;
+            const targetMileage = parseFloat(document.getElementById('targetMileage').value);
+            const selectedSport = document.querySelector('input[name="sport"]:checked');
+            
+            const registerBtn = document.getElementById('registerMemberBtn');
+            if (!registerBtn) return;
+            
+            if (year && month && selectedSport && targetMileage && targetMileage > 0) {
+                // 미터를 km로 환산하고 소수점 두 번째 자리까지만 표시 (버림)
+                const targetKm = Math.floor((targetMileage / 1000) * 100) / 100;
+                const targetKmText = targetKm.toFixed(2);
+                registerBtn.textContent = `${selectedSport.value} ${targetKmText} km 목표 마일리지 등록`;
+            } else {
+                registerBtn.textContent = '목표 마일리지 등록';
+            }
+        }
+
+        // 멤버 등록
+        async function registerMember() {
+            const name = document.getElementById('memberName').value.trim();
+            const year = parseInt(document.getElementById('memberYear').value);
+            const month = parseInt(document.getElementById('memberMonth').value);
+            const targetMileage = parseFloat(document.getElementById('targetMileage').value);
+
+            // 라디오 버튼에서 선택된 종목 가져오기
+            const selectedSport = document.querySelector('input[name="sport"]:checked');
+            
+            if (!name) {
+                showAlert('registerAlert', '이름을 입력하세요.', 'error');
+                return;
+            }
+
+            if (!selectedSport) {
+                showAlert('registerAlert', '종목을 선택하세요.', 'error');
+                return;
+            }
+
+            const sports = [selectedSport.value];
+            const sport = selectedSport.value;
+
+            if (!targetMileage || targetMileage <= 0) {
+                showAlert('registerAlert', '목표 마일리지를 입력하세요.', 'error');
+                return;
+            }
+
+            try {
+                // 1. 멤버가 존재하는지 확인 (이름만으로)
+                let { data: existingMember, error: memberError } = await supabaseClient
+                    .from('iron_members')
+                    .select('*')
+                    .eq('name', name)
+                    .single();
+
+                if (memberError && memberError.code !== 'PGRST116') {
+                    throw memberError;
+                }
+
+                let memberId;
+                if (!existingMember) {
+                    // 멤버가 없으면 생성
+                    const { data: newMember, error: insertError } = await supabaseClient
+                        .from('iron_members')
+                        .insert([
+                            {
+                                name: name,
+                                sports: sports.join(',')
+                            }
+                        ])
+                        .select()
+                        .single();
+
+                    if (insertError) throw insertError;
+                    memberId = newMember.id;
+                } else {
+                    // 멤버가 있으면 ID 사용
+                    memberId = existingMember.id;
+                    
+                    // 종목이 sports에 없으면 추가
+                    const memberSports = existingMember.sports ? existingMember.sports.split(',') : [];
+                    if (!memberSports.includes(sport)) {
+                        memberSports.push(sport);
+                        await supabaseClient
+                            .from('iron_members')
+                            .update({ sports: memberSports.join(',') })
+                            .eq('id', memberId);
+                    }
+                }
+
+                // 2. 동일 년도/월/종목의 기존 레코드 확인
+                const { data: existingRecord, error: recordError } = await supabaseClient
+                    .from('iron_member_records')
+                    .select('*')
+                    .eq('member_id', memberId)
+                    .eq('year', year)
+                    .eq('month', month)
+                    .eq('sport', sport)
+                    .single();
+
+                if (recordError && recordError.code !== 'PGRST116') {
+                    throw recordError;
+                }
+
+                if (existingRecord) {
+                    // 기존 레코드가 있는 경우
+                    const existingTargetKm = (Math.floor(existingRecord.target_mileage / 100) / 10).toFixed(1);
+                    const newTargetKm = (Math.floor(targetMileage / 100) / 10).toFixed(1);
+                    
+                    const confirmMessage = `동일한 이름(${name}), 년도/월(${year}년 ${month}월), 종목(${sport})의 목표 마일리지가 이미 등록되어 있습니다.\n\n기존: ${sport} - ${existingTargetKm}km\n새로운: ${sport} - ${newTargetKm}km\n\n목표 마일리지를 변경하시겠습니까?`;
+                    
+                    if (confirm(confirmMessage)) {
+                        // 목표 마일리지 레코드 업데이트
+                        const { error: updateError } = await supabaseClient
+                            .from('iron_member_records')
+                            .update({
+                                target_mileage: targetMileage
+                            })
+                            .eq('id', existingRecord.id);
+
+                        if (updateError) throw updateError;
+
+                        showAlert('registerAlert', '목표 마일리지가 성공적으로 변경되었습니다.', 'success');
+                        
+                        // 폼 초기화
+                        document.getElementById('memberName').value = '';
+                        document.getElementById('targetMileage').value = '';
+                        const sportRadios = document.querySelectorAll('input[name="sport"]');
+                        sportRadios.forEach(radio => radio.checked = false);
+                        
+                        // 버튼 텍스트 초기화
+                        updateRegisterButtonText();
+
+                        // 멤버 목록 새로고침
+                        setTimeout(() => {
+                            loadMembers();
+                        }, 1000);
+                    }
+                    return;
+                }
+
+                // 3. 기존 레코드가 없는 경우 새로 등록
+                const { error: insertRecordError } = await supabaseClient
+                    .from('iron_member_records')
+                    .insert([
+                        {
+                            member_id: memberId,
+                            year: year,
+                            month: month,
+                            sport: sport,
+                            target_mileage: targetMileage
+                        }
+                    ]);
+
+                if (insertRecordError) throw insertRecordError;
+
+                showAlert('registerAlert', '목표 마일리지가 성공적으로 등록되었습니다.', 'success');
+                
+                // 폼 초기화
+                document.getElementById('memberName').value = '';
+                document.getElementById('targetMileage').value = '';
+                const sportRadios = document.querySelectorAll('input[name="sport"]');
+                sportRadios.forEach(radio => radio.checked = false);
+                
+                // 버튼 텍스트 초기화
+                updateRegisterButtonText();
+
+                // 멤버 목록 새로고침
+                setTimeout(() => {
+                    loadMembers();
+                }, 1000);
+            } catch (error) {
+                console.error('멤버 등록 오류:', error);
+                showAlert('registerAlert', '멤버 등록 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 마일리지 추가 (누적 방식)
+        async function addOrUpdateMileage() {
+            if (!currentMember) {
+                showAlert('registerAlert', '멤버를 먼저 선택하세요.', 'error');
+                return;
+            }
+
+            const sport = document.getElementById('mileageSport').value;
+            const year = parseInt(document.getElementById('mileageYear').value);
+            const month = parseInt(document.getElementById('mileageMonth').value);
+            const distance = parseFloat(document.getElementById('mileageDistance').value);
+
+            if (!sport) {
+                alert('종목을 선택하세요.');
+                return;
+            }
+
+            if (!distance || distance <= 0) {
+                alert('마일리지를 입력하세요.');
+                return;
+            }
+
+            try {
+                // 항상 새 레코드로 추가 (누적 방식)
+                const { data, error } = await supabaseClient
+                    .from('iron_mileages')
+                    .insert([
+                        {
+                            member_id: currentMember.id,
+                            member_name: currentMember.name,
+                            sport: sport,
+                            year: year,
+                            month: month,
+                            distance: distance,
+                            created_at: new Date().toISOString()
+                        }
+                    ])
+                    .select();
+
+                if (error) throw error;
+
+                alert('마일리지가 성공적으로 추가되었습니다.');
+
+                // 입력 필드 초기화
+                document.getElementById('mileageDistance').value = '';
+                document.getElementById('existingMileageInfo').innerHTML = '';
+                
+                // 버튼 텍스트 초기화
+                updateMileageButtonText();
+                
+                // 기존 마일리지 정보 새로고침
+                loadExistingMileage();
+                
+                // 현황 새로고침
+                loadMileageStats();
+            } catch (error) {
+                console.error('마일리지 추가 오류:', error);
+                alert('마일리지 추가 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 종목별 탭 생성
+        function createSportTabs(member) {
+            const sportTabs = document.getElementById('sportTabs');
+            sportTabs.innerHTML = '';
+            
+            // 모든 종목 탭 표시
+            const allSports = ['수영', '러닝', '사이클'];
+            const memberSports = member && member.sports ? member.sports.split(',').map(s => s.trim()) : [];
+            
+            allSports.forEach((sport, index) => {
+                const tab = document.createElement('button');
+                tab.className = 'sport-tab';
+                tab.dataset.sport = sport;
+                tab.textContent = sport;
+                tab.onclick = () => switchSportTab(sport);
+                
+                // 멤버가 등록하지 않은 종목은 비활성화
+                if (member && memberSports.length > 0 && !memberSports.includes(sport)) {
+                    tab.style.opacity = '0.5';
+                    tab.style.cursor = 'not-allowed';
+                    tab.disabled = true;
+                }
+                
+                if (index === 0) {
+                    tab.classList.add('active');
+                    currentSport = sport;
+                }
+                sportTabs.appendChild(tab);
+            });
+        }
+
+        // 종목별 탭 전환
+        async function switchSportTab(sport) {
+            currentSport = sport;
+            
+            // 탭 활성화 상태 업데이트
+            document.querySelectorAll('.sport-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            const activeTab = document.querySelector(`.sport-tab[data-sport="${sport}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+            
+            // 해당 종목의 비교 멤버 목록으로 복원 및 업데이트
+            await updateCompareMemberSelects();
+            
+            // 현황 새로고침
+            if (currentMember) {
+                loadMileageStats();
+                await updateComparison();
+            }
+        }
+
+        // 마일리지 현황 로드
+        async function loadMileageStats() {
+            if (!currentMember) return;
+
+            try {
+                const currentYear = parseInt(document.getElementById('mileageYear').value);
+                const currentMonth = parseInt(document.getElementById('mileageMonth').value);
+
+                // 해당 월의 마일리지 조회 (종목별 필터링)
+                const { data: monthlyData, error: monthlyError } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport);
+
+                if (monthlyError) throw monthlyError;
+
+                // 해당 년도의 마일리지 조회 (종목별 필터링)
+                const { data: yearlyData, error: yearlyError } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('sport', currentSport);
+
+                if (yearlyError) throw yearlyError;
+
+                // 목표 마일리지 레코드 조회
+                const { data: targetRecord, error: targetError } = await supabaseClient
+                    .from('iron_member_records')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport)
+                    .single();
+
+                if (targetError && targetError.code !== 'PGRST116') {
+                    throw targetError;
+                }
+
+                // 목표 달성률 계산
+                const totalMileage = monthlyData.reduce((sum, item) => sum + item.distance, 0);
+                const targetMileage = targetRecord ? targetRecord.target_mileage : 0;
+                const achievementRate = targetMileage > 0 ? (totalMileage / targetMileage) * 100 : 0;
+
+                // 진행률 표시
+                displayProgress(achievementRate, totalMileage, targetMileage, currentYear, currentMonth, currentSport);
+
+                // 년도별 추이 표시
+                await displayYearlyChart(yearlyData, currentYear, currentMember, currentSport);
+
+                // 현황 표시
+                document.getElementById('mileageStats').classList.remove('hidden');
+            } catch (error) {
+                console.error('마일리지 현황 로드 오류:', error);
+            }
+        }
+
+        // 진행률 표시
+        function displayProgress(rate, current, target, year, month, sport) {
+            const container = document.getElementById('progressContainer');
+            // km 단위로 환산 (미터를 1000으로 나눔, 반올림 없이 내림)
+            const currentKm = (Math.floor(current / 100) / 10).toFixed(1);
+            const targetKm = (Math.floor(target / 100) / 10).toFixed(1);
+            const rateValue = Math.min(rate, 100);
+            const rateText = `${rateValue.toFixed(1)}%`;
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 16px; font-weight: bold;">
+                    ${year}년 ${month}월 목표 달성률
+                </div>
+                <div class="progress-bar" style="height: 30px; position: relative; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1);">
+                    <div class="progress-fill" style="width: ${rateValue}%; height: 100%; background: #667eea; transition: width 0.3s ease; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+                    <div class="progress-text" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: ${rateValue >= 50 ? '#fff' : '#333'}; text-shadow: ${rateValue >= 50 ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none'}; pointer-events: none; z-index: 2;">
+                        ${rateText}
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 10px;">
+                    <div>현재: ${currentKm}km / 목표: ${targetKm}km</div>
+                </div>
+            `;
+        }
+
+        // 년도별 추이 표시 (Chart.js 사용)
+        async function displayYearlyChart(data, year, member, sport, targetRecord) {
+            // 제목 업데이트
+            const titleElement = document.getElementById('yearlyChartTitle');
+            if (titleElement && year) {
+                titleElement.textContent = `${year}년 ${sport} 월별 목표 달성률 추이`;
+            }
+            
+            // 월별 달성 마일리지 집계 (숫자 키로 저장)
+            const monthlyTotals = {};
+            
+            data.forEach(item => {
+                const monthNum = item.month; // 숫자로 저장
+                if (!monthlyTotals[monthNum]) {
+                    monthlyTotals[monthNum] = 0;
+                }
+                monthlyTotals[monthNum] += item.distance;
+            });
+
+            // 해당 년도의 모든 목표 마일리지 레코드 조회
+            const { data: allTargetRecords, error: recordsError } = await supabaseClient
+                .from('iron_member_records')
+                .select('*')
+                .eq('member_id', member.id)
+                .eq('year', year)
+                .eq('sport', sport);
+
+            if (recordsError) {
+                console.error('목표 마일리지 레코드 조회 오류:', recordsError);
+            }
+
+            // 월별 목표 마일리지 맵 생성
+            const monthlyTargets = {};
+            if (allTargetRecords) {
+                allTargetRecords.forEach(record => {
+                    monthlyTargets[record.month] = record.target_mileage;
+                });
+            }
+
+            const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            
+            // 달성률 데이터 준비 (12개월 모두)
+            const achievementRates = [];
+            const achievementRatesOver100 = [];
+            const monthLabels = [];
+
+            months.forEach((monthNum) => {
+                const achieved = monthlyTotals[monthNum] || 0;
+                const monthTargetMileage = monthlyTargets[monthNum] || 0;
+                
+                monthLabels.push(`${monthNum}월`);
+                
+                if (monthTargetMileage > 0) {
+                    // 목표가 있는 경우: 달성률 계산
+                    const achievementRate = (achieved / monthTargetMileage) * 100;
+                    
+                    if (achievementRate <= 100) {
+                        achievementRates.push(achievementRate);
+                        achievementRatesOver100.push(0);
+                    } else {
+                        // 100% 초과인 경우
+                        achievementRates.push(100);
+                        achievementRatesOver100.push(achievementRate - 100);
+                    }
+                } else {
+                    // 목표가 없는 경우: 0으로 표시
+                    achievementRates.push(0);
+                    achievementRatesOver100.push(0);
+                }
+            });
+
+            // 기존 차트가 있으면 제거
+            const chartCanvas = document.getElementById('yearlyChart');
+            if (yearlyChartInstance) {
+                yearlyChartInstance.destroy();
+                yearlyChartInstance = null;
+            }
+
+            // Chart.js로 스택 막대 그래프 생성
+            const ctx = chartCanvas.getContext('2d');
+            yearlyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthLabels,
+                    datasets: [
+                        {
+                            label: '달성률',
+                            data: achievementRates,
+                            backgroundColor: '#fee500',
+                            borderColor: '#fee500',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: '100% 초과',
+                            data: achievementRatesOver100,
+                            backgroundColor: '#4caf50',
+                            borderColor: '#4caf50',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const datasetLabel = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    if (datasetLabel === '100% 초과') {
+                                        return `${datasetLabel}: ${value.toFixed(1)}%`;
+                                    } else if (value > 0) {
+                                        return `${datasetLabel}: ${value.toFixed(1)}%`;
+                                    }
+                                    return '목표 없음';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            stacked: true, // 스택 모드 활성화
+                            ticks: {
+                                stepSize: 20,
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: '#e0e0e0',
+                                lineWidth: 1,
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            stacked: true, // 스택 모드 활성화
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 전체 순위 표시
+        async function displayRanking() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('member_name, distance');
+
+                if (error) throw error;
+
+                const totals = {};
+                data.forEach(item => {
+                    if (!totals[item.member_name]) {
+                        totals[item.member_name] = 0;
+                    }
+                    totals[item.member_name] += item.distance;
+                });
+
+                const ranking = Object.entries(totals)
+                    .map(([name, total]) => ({ name, total }))
+                    .sort((a, b) => b.total - a.total);
+
+                const rankingList = document.getElementById('rankingList');
+                rankingList.innerHTML = '';
+
+                ranking.forEach((item, index) => {
+                    const rankingItem = document.createElement('div');
+                    rankingItem.className = 'ranking-item';
+                    rankingItem.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="ranking-number">${index + 1}</span>
+                            <span>${item.name}</span>
+                        </div>
+                        <span style="font-weight: bold;">${item.total.toLocaleString()}m</span>
+                    `;
+                    rankingList.appendChild(rankingItem);
+                });
+            } catch (error) {
+                console.error('순위 로드 오류:', error);
+            }
+        }
+
+        // 비교 멤버 선택 업데이트 (해당 종목을 등록한 멤버만 표시)
+        async function updateCompareMemberSelects() {
+            const select = document.getElementById('compareMemberSelect');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">선택하세요</option>';
+
+            if (!currentSport) return;
+
+            try {
+                // 1. 해당 종목을 등록한 멤버 ID 목록 조회 (중복 제거)
+                const { data: records, error: recordsError } = await supabaseClient
+                    .from('iron_member_records')
+                    .select('member_id')
+                    .eq('sport', currentSport);
+
+                if (recordsError) throw recordsError;
+
+                // 고유한 member_id만 추출
+                const uniqueMemberIds = new Set();
+                if (records) {
+                    records.forEach(record => {
+                        if (record.member_id) {
+                            uniqueMemberIds.add(record.member_id);
+                        }
+                    });
+                }
+
+                // 현재 선택된 멤버 ID 제외
+                if (currentMember) {
+                    uniqueMemberIds.delete(currentMember.id);
+                }
+
+                // 현재 종목의 비교 멤버 ID 목록 가져오기
+                const currentCompareMembers = compareMembersBySport[currentSport] || [];
+                const currentCompareMemberIds = new Set(currentCompareMembers.map(m => m.id));
+
+                // 이미 추가된 비교 멤버 ID 제외
+                currentCompareMemberIds.forEach(id => uniqueMemberIds.delete(id));
+
+                // 2. 고유한 멤버 ID로 멤버 정보 조회
+                if (uniqueMemberIds.size > 0) {
+                    const memberIdsArray = Array.from(uniqueMemberIds);
+                    
+                    // Supabase의 in() 쿼리는 최대 1000개까지 지원하므로 안전
+                    const { data: members, error: membersError } = await supabaseClient
+                        .from('iron_members')
+                        .select('id, name')
+                        .in('id', memberIdsArray)
+                        .order('name');
+
+                    if (membersError) throw membersError;
+                    
+                    // 조회된 멤버들도 중복 제거 (같은 ID가 여러 번 나올 경우 대비)
+                    const uniqueMembersMap = new Map();
+                    if (members) {
+                        members.forEach(member => {
+                            if (member.id && !uniqueMembersMap.has(member.id)) {
+                                uniqueMembersMap.set(member.id, member);
+                            }
+                        });
+                    }
+                    const uniqueMembers = Array.from(uniqueMembersMap.values());
+
+                    // select box에 추가 (중복 체크 강화)
+                    if (uniqueMembers && uniqueMembers.length > 0) {
+                        // 이미 추가된 option의 value를 Set으로 관리
+                        const addedOptionValues = new Set();
+                        
+                        // 기존 option들의 value 수집 (선택하세요 제외)
+                        for (let i = 1; i < select.options.length; i++) {
+                            if (select.options[i].value) {
+                                addedOptionValues.add(select.options[i].value);
+                            }
+                        }
+                        
+                        uniqueMembers.forEach(member => {
+                            // 이미 추가된 멤버 ID는 건너뛰기
+                            if (addedOptionValues.has(member.id)) {
+                                return;
+                            }
+                            
+                            const option = document.createElement('option');
+                            option.value = member.id;
+                            option.textContent = member.name;
+                            select.appendChild(option);
+                            addedOptionValues.add(member.id);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('비교 멤버 목록 로드 오류:', error);
+            }
+        }
+
+        // 비교 멤버 추가
+        async function addCompareMember() {
+            const select = document.getElementById('compareMemberSelect');
+            const memberId = select.value;
+
+            if (!memberId) {
+                alert('비교할 멤버를 선택하세요.');
+                return;
+            }
+
+            // 현재 종목의 비교 멤버 목록 가져오기
+            const currentCompareMembers = compareMembersBySport[currentSport] || [];
+
+            // 이미 추가된 멤버인지 확인
+            if (currentCompareMembers.find(m => m.id === memberId)) {
+                alert('이미 추가된 멤버입니다.');
+                return;
+            }
+
+            // 현재 선택된 멤버와 동일한지 확인
+            if (currentMember && currentMember.id === memberId) {
+                alert('현재 선택된 멤버는 자동으로 표시됩니다.');
+                return;
+            }
+
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) {
+                alert('멤버를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 현재 종목의 비교 멤버 목록에 추가
+            if (!compareMembersBySport[currentSport]) {
+                compareMembersBySport[currentSport] = [];
+            }
+            compareMembersBySport[currentSport].push(member);
+            select.value = '';
+            
+            // select box 업데이트 (추가된 멤버 제외)
+            await updateCompareMemberSelects();
+            
+            // 비교 표시 업데이트
+            await updateComparison();
+        }
+
+        // 비교 업데이트
+        async function updateComparison() {
+            const currentYear = parseInt(document.getElementById('mileageYear').value);
+            const currentMonth = parseInt(document.getElementById('mileageMonth').value);
+
+            if (!currentMember) {
+                document.getElementById('comparisonContainer').innerHTML = '';
+                return;
+            }
+
+            try {
+                const comparisons = [];
+
+                // 1. 디폴트 멤버 (현재 선택된 멤버) 정보 조회
+                const { data: defaultData } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport);
+
+                const { data: defaultTargetRecord } = await supabaseClient
+                    .from('iron_member_records')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport)
+                    .single();
+
+                const defaultTotal = defaultData ? defaultData.reduce((sum, item) => sum + item.distance, 0) : 0;
+                const defaultTarget = defaultTargetRecord ? defaultTargetRecord.target_mileage : 0;
+                
+                comparisons.push({
+                    id: currentMember.id,
+                    name: currentMember.name,
+                    target: defaultTarget,
+                    current: defaultTotal,
+                    rate: defaultTarget > 0 ? (defaultTotal / defaultTarget) * 100 : 0,
+                    isDefault: true
+                });
+
+                // 2. 현재 종목의 추가된 비교 멤버들 정보 조회
+                const currentCompareMembers = compareMembersBySport[currentSport] || [];
+                for (const compareMember of currentCompareMembers) {
+                    const { data: compareData } = await supabaseClient
+                        .from('iron_mileages')
+                        .select('*')
+                        .eq('member_id', compareMember.id)
+                        .eq('year', currentYear)
+                        .eq('month', currentMonth)
+                        .eq('sport', currentSport);
+
+                    const { data: compareTargetRecord } = await supabaseClient
+                        .from('iron_member_records')
+                        .select('*')
+                        .eq('member_id', compareMember.id)
+                        .eq('year', currentYear)
+                        .eq('month', currentMonth)
+                        .eq('sport', currentSport)
+                        .single();
+
+                    const compareTotal = compareData ? compareData.reduce((sum, item) => sum + item.distance, 0) : 0;
+                    const compareTarget = compareTargetRecord ? compareTargetRecord.target_mileage : 0;
+                    
+                    comparisons.push({
+                        id: compareMember.id,
+                        name: compareMember.name,
+                        target: compareTarget,
+                        current: compareTotal,
+                        rate: compareTarget > 0 ? (compareTotal / compareTarget) * 100 : 0,
+                        isDefault: false
+                    });
+                }
+
+                displayComparison(comparisons);
+            } catch (error) {
+                console.error('비교 로드 오류:', error);
+            }
+        }
+
+        // 비교 표시
+        function displayComparison(comparisons) {
+            const container = document.getElementById('comparisonContainer');
+            container.innerHTML = '';
+
+            if (comparisons.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">비교할 멤버를 추가하세요.</div>';
+                return;
+            }
+
+            // 중복 제거 (같은 ID를 가진 멤버는 하나만 표시)
+            const uniqueComparisons = [];
+            const seenIds = new Set();
+            
+            comparisons.forEach(comp => {
+                if (!seenIds.has(comp.id)) {
+                    seenIds.add(comp.id);
+                    uniqueComparisons.push(comp);
+                }
+            });
+
+            uniqueComparisons.forEach((comp, index) => {
+                const card = document.createElement('div');
+                card.className = 'comparison-card';
+                card.style.marginBottom = '15px';
+                card.style.padding = '15px';
+                card.style.border = comp.isDefault ? '2px solid #667eea' : '1px solid #e0e0e0';
+                card.style.borderRadius = '8px';
+                card.style.backgroundColor = comp.isDefault ? '#f0f4ff' : '#fff';
+                
+                const rate = Math.min(comp.rate, 100);
+                const rateText = `${rate.toFixed(1)}%`;
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="margin: 0; font-size: 16px; ${comp.isDefault ? 'color: #667eea; font-weight: bold;' : ''}">
+                            ${comp.isDefault ? '⭐ ' : ''}${comp.name}
+                        </h4>
+                        ${!comp.isDefault ? `<button onclick="removeCompareMember('${comp.id}')" style="background: #ff4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;">제거</button>` : ''}
+                    </div>
+                    <div class="progress-bar" style="height: 30px; position: relative; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1);">
+                        <div class="progress-fill" style="width: ${rate}%; height: 100%; background: ${comp.isDefault ? '#667eea' : '#fee500'}; transition: width 0.3s ease; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+                        <div class="progress-text" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: ${rate >= 50 ? '#fff' : '#333'}; text-shadow: ${rate >= 50 ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none'}; pointer-events: none; z-index: 2;">
+                            ${rateText}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 비교 멤버 제거
+        async function removeCompareMember(memberId) {
+            // 현재 종목의 비교 멤버 목록에서 제거
+            if (compareMembersBySport[currentSport]) {
+                compareMembersBySport[currentSport] = compareMembersBySport[currentSport].filter(m => m.id !== memberId);
+            }
+            
+            // select box 업데이트 (제거된 멤버 다시 표시)
+            await updateCompareMemberSelects();
+            
+            // 비교 표시 업데이트
+            await updateComparison();
+        }
+
+        // 이력 조회 멤버 선택 업데이트
+        function updateHistoryMemberSelect() {
+            const select = document.getElementById('historyMember');
+            select.innerHTML = '<option value="">선택하세요</option>';
+
+            allMembers.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.name;
+                select.appendChild(option);
+            });
+        }
+
+        // 이력 로드 (오늘 기준 해당월 데이터만)
+        async function loadHistory() {
+            const memberId = document.getElementById('historyMember').value;
+            if (!memberId) {
+                document.getElementById('historyList').innerHTML = '';
+                return;
+            }
+
+            try {
+                // 오늘 날짜 기준으로 년도와 월 가져오기
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const currentMonth = today.getMonth() + 1;
+
+                const { data, error } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', memberId)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                displayHistory(data, currentYear, currentMonth);
+            } catch (error) {
+                console.error('이력 로드 오류:', error);
+            }
+        }
+
+        // 이력 표시
+        function displayHistory(data, year, month) {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+
+            if (data.length === 0) {
+                historyList.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">${year}년 ${month}월에 등록된 마일리지가 없습니다.</div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                const date = new Date(item.created_at);
+                const dateStr = date.toLocaleString('ko-KR', {
+                    year: '2-digit',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+
+                const sportBadgeClass = {
+                    '수영': 'badge-swim',
+                    '러닝': 'badge-run',
+                    '사이클': 'badge-cycle'
+                }[item.sport] || '';
+
+                // km 단위로 환산
+                const km = Math.floor((item.distance / 1000) * 100) / 100;
+                const kmText = km.toFixed(2);
+
+                historyItem.innerHTML = `
+                    <div class="history-item-info">
+                        <div class="history-item-date">${dateStr}</div>
+                        <div class="history-item-details">
+                            <span class="badge ${sportBadgeClass}">${item.sport}</span>
+                            ${kmText} km (${item.distance.toLocaleString()}m)
+                        </div>
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="deleteMileage('${item.id}')">삭제</button>
+                `;
+                historyList.appendChild(historyItem);
+            });
+        }
+
+        // 마일리지 삭제
+        async function deleteMileage(id) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('iron_mileages')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                alert('마일리지가 삭제되었습니다.');
+                loadHistory();
+                if (currentMember) {
+                    loadMileageStats();
+                }
+            } catch (error) {
+                console.error('마일리지 삭제 오류:', error);
+                alert('마일리지 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 카카오톡 공유
+        function shareKakao() {
+            if (!currentMember) {
+                alert('멤버를 먼저 선택하세요.');
+                return;
+            }
+
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+            const now = new Date().toLocaleString('ko-KR');
+
+            Kakao.Share.sendDefault({
+                objectType: 'text',
+                text: `🦾 나도 철인 돼보카? 현황\n\n${currentMember.name}님의 ${currentYear}년 ${currentMonth}월 목표 달성 현황을 확인해보세요!\n\n현재 시각: ${now}\n\n웹사이트에서 더 자세한 정보를 확인하세요.`,
+                link: {
+                    mobileWebUrl: window.location.href,
+                    webUrl: window.location.href,
+                },
+            });
+        }
+
+        // 알림 표시
+        function showAlert(elementId, message, type) {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
