@@ -1994,7 +1994,7 @@
         }
 
         // 카카오톡 공유
-        async function shareKakao() {
+        function shareKakao() {
             if (!currentMember) {
                 alert('멤버를 먼저 선택하세요.');
                 return;
@@ -2006,86 +2006,71 @@
             let boardText = `🦾 나도 철인 돼보카? 현황\n\n${currentMember.name}님의 ${currentYear}년 ${currentMonth}월 목표 달성 현황을 확인해보세요!`;
 
             try {
-                // 멤버의 월별 달성률 조회
-                const { data: monthlyData } = await supabaseClient
-                    .from('iron_mileages')
-                    .select('*')
-                    .eq('member_id', currentMember.id)
-                    .eq('year', currentYear)
-                    .eq('month', currentMonth)
-                    .eq('sport', currentSport);
+                // 화면에 그려진 멤버의 월별 달성률 정보 가져오기
+                const progressContainer = document.getElementById('progressContainer');
+                if (progressContainer && progressContainer.innerHTML) {
+                    // 진행률 텍스트에서 달성률 추출
+                    const progressText = progressContainer.querySelector('.progress-text');
+                    if (progressText) {
+                        const rateText = progressText.textContent.trim(); // 예: "85.5%"
+                        const rateValue = parseFloat(rateText.replace('%', ''));
+                        
+                        // 현재/목표 거리 정보 추출
+                        const distanceText = progressContainer.textContent;
+                        const currentMatch = distanceText.match(/현재:\s*([\d.]+)km/);
+                        const targetMatch = distanceText.match(/목표:\s*([\d.]+)km/);
+                        
+                        if (rateText && currentMatch && targetMatch) {
+                            boardText += `\n\n📊 ${currentSport} 목표 달성률: ${rateText}`;
+                            boardText += `\n현재: ${currentMatch[1]}km / 목표: ${targetMatch[1]}km`;
+                        }
+                    }
+                }
 
-                const { data: targetRecord } = await supabaseClient
-                    .from('iron_member_records')
-                    .select('*')
-                    .eq('member_id', currentMember.id)
-                    .eq('year', currentYear)
-                    .eq('month', currentMonth)
-                    .eq('sport', currentSport)
-                    .single();
-
-                const totalMileage = monthlyData ? monthlyData.reduce((sum, item) => sum + item.distance, 0) : 0;
-                const targetMileage = targetRecord ? targetRecord.target_mileage : 0;
-                const achievementRate = targetMileage > 0 ? (totalMileage / targetMileage) * 100 : 0;
-                
-                // km 단위로 환산
-                const currentKm = (Math.floor(totalMileage / 100) / 10).toFixed(1);
-                const targetKm = (Math.floor(targetMileage / 100) / 10).toFixed(1);
-                const rateText = achievementRate.toFixed(1);
-
-                boardText += `\n\n📊 ${currentSport} 목표 달성률: ${rateText}%`;
-                boardText += `\n현재: ${currentKm}km / 목표: ${targetKm}km`;
-
-                // 멤버 비교한 결과가 있다면 추가
-                const currentCompareMembers = compareMembersBySport[currentSport] || [];
-                if (currentCompareMembers.length > 0) {
-                    boardText += `\n\n⚖️ 멤버 비교:`;
-                    
+                // 화면에 그려진 멤버 비교 결과 가져오기
+                const comparisonContainer = document.getElementById('comparisonContainer');
+                if (comparisonContainer && comparisonContainer.children.length > 0) {
                     const comparisons = [];
                     
-                    // 현재 멤버 정보 추가
-                    comparisons.push({
-                        name: currentMember.name,
-                        rate: achievementRate
+                    // 각 비교 카드에서 정보 추출
+                    const comparisonCards = comparisonContainer.querySelectorAll('.comparison-card');
+                    comparisonCards.forEach(card => {
+                        // 멤버 이름 추출 (h4 태그에서)
+                        const nameElement = card.querySelector('h4');
+                        if (nameElement) {
+                            let memberName = nameElement.textContent.trim();
+                            // ⭐ 제거
+                            memberName = memberName.replace(/⭐\s*/, '').trim();
+                            
+                            // 달성률 추출 (progress-text에서)
+                            const progressText = card.querySelector('.progress-text');
+                            if (progressText) {
+                                const rateText = progressText.textContent.trim();
+                                const rateValue = parseFloat(rateText.replace('%', ''));
+                                
+                                // 현재 멤버인지 확인 (⭐ 표시 또는 isDefault 스타일로)
+                                const isCurrent = memberName === currentMember.name || nameElement.textContent.includes('⭐');
+                                
+                                comparisons.push({
+                                    name: memberName,
+                                    rate: rateValue,
+                                    isCurrent: isCurrent
+                                });
+                            }
+                        }
                     });
 
-                    // 비교 멤버들 정보 조회
-                    for (const compareMember of currentCompareMembers) {
-                        const { data: compareData } = await supabaseClient
-                            .from('iron_mileages')
-                            .select('*')
-                            .eq('member_id', compareMember.id)
-                            .eq('year', currentYear)
-                            .eq('month', currentMonth)
-                            .eq('sport', currentSport);
+                    if (comparisons.length > 0) {
+                        boardText += `\n\n⚖️ 멤버 비교:`;
+                        
+                        // 달성률 순으로 정렬
+                        comparisons.sort((a, b) => b.rate - a.rate);
 
-                        const { data: compareTargetRecord } = await supabaseClient
-                            .from('iron_member_records')
-                            .select('*')
-                            .eq('member_id', compareMember.id)
-                            .eq('year', currentYear)
-                            .eq('month', currentMonth)
-                            .eq('sport', currentSport)
-                            .single();
-
-                        const compareTotal = compareData ? compareData.reduce((sum, item) => sum + item.distance, 0) : 0;
-                        const compareTarget = compareTargetRecord ? compareTargetRecord.target_mileage : 0;
-                        const compareRate = compareTarget > 0 ? (compareTotal / compareTarget) * 100 : 0;
-
-                        comparisons.push({
-                            name: compareMember.name,
-                            rate: compareRate
+                        comparisons.forEach((comp, index) => {
+                            const rank = index + 1;
+                            boardText += `\n${rank}. ${comp.name}: ${comp.rate.toFixed(1)}%${comp.isCurrent ? ' ⭐' : ''}`;
                         });
                     }
-
-                    // 달성률 순으로 정렬
-                    comparisons.sort((a, b) => b.rate - a.rate);
-
-                    comparisons.forEach((comp, index) => {
-                        const rank = index + 1;
-                        const isCurrent = comp.name === currentMember.name;
-                        boardText += `\n${rank}. ${comp.name}: ${comp.rate.toFixed(1)}%${isCurrent ? ' ⭐' : ''}`;
-                    });
                 }
 
                 boardText += `\n\nhttps://i-like-jeju.github.io/iron-man`;
