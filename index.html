@@ -923,9 +923,15 @@
         }
 
         // 종목 변경 시
-        function onMileageSportChange() {
+        async function onMileageSportChange() {
             loadExistingMileage();
             updateMileageButtonText();
+            
+            // 선택된 종목으로 탭도 자동 전환
+            const selectedSport = document.getElementById('mileageSport').value;
+            if (selectedSport) {
+                await switchSportTab(selectedSport);
+            }
         }
 
         // 기존 마일리지 조회 및 표시 (누적 합계)
