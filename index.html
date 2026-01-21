@@ -579,8 +579,10 @@
                     </div>
 
                     <button class="btn btn-kakao" onclick="shareKakao()" style="margin-top: 20px;">
-                        <span class="icon">💬</span>
-                        카카오톡으로 공유하기
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.558 1.712 4.8 4.32 6.131l-.81 2.981c-.07.258.21.462.42.308l3.521-2.345c.504.088 1.021.14 1.549.14 4.97 0 9-3.185 9-7.115S16.97 3 12 3z"/>
+                        </svg>
+                        카톡 공유
                     </button>
                 </div>
             </div>
@@ -1992,24 +1994,123 @@
         }
 
         // 카카오톡 공유
-        function shareKakao() {
+        async function shareKakao() {
             if (!currentMember) {
                 alert('멤버를 먼저 선택하세요.');
                 return;
             }
 
-            const currentYear = new Date().getFullYear();
-            const currentMonth = new Date().getMonth() + 1;
-            const now = new Date().toLocaleString('ko-KR');
+            const currentYear = parseInt(document.getElementById('mileageYear').value) || new Date().getFullYear();
+            const currentMonth = parseInt(document.getElementById('mileageMonth').value) || new Date().getMonth() + 1;
 
-            Kakao.Share.sendDefault({
-                objectType: 'text',
-                text: `🦾 나도 철인 돼보카? 현황\n\n${currentMember.name}님의 ${currentYear}년 ${currentMonth}월 목표 달성 현황을 확인해보세요!\n\n현재 시각: ${now}\n\n웹사이트에서 더 자세한 정보를 확인하세요.`,
-                link: {
-                    mobileWebUrl: window.location.href,
-                    webUrl: window.location.href,
-                },
-            });
+            let boardText = `🦾 나도 철인 돼보카? 현황\n\n${currentMember.name}님의 ${currentYear}년 ${currentMonth}월 목표 달성 현황을 확인해보세요!`;
+
+            try {
+                // 멤버의 월별 달성률 조회
+                const { data: monthlyData } = await supabaseClient
+                    .from('iron_mileages')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport);
+
+                const { data: targetRecord } = await supabaseClient
+                    .from('iron_member_records')
+                    .select('*')
+                    .eq('member_id', currentMember.id)
+                    .eq('year', currentYear)
+                    .eq('month', currentMonth)
+                    .eq('sport', currentSport)
+                    .single();
+
+                const totalMileage = monthlyData ? monthlyData.reduce((sum, item) => sum + item.distance, 0) : 0;
+                const targetMileage = targetRecord ? targetRecord.target_mileage : 0;
+                const achievementRate = targetMileage > 0 ? (totalMileage / targetMileage) * 100 : 0;
+                
+                // km 단위로 환산
+                const currentKm = (Math.floor(totalMileage / 100) / 10).toFixed(1);
+                const targetKm = (Math.floor(targetMileage / 100) / 10).toFixed(1);
+                const rateText = achievementRate.toFixed(1);
+
+                boardText += `\n\n📊 ${currentSport} 목표 달성률: ${rateText}%`;
+                boardText += `\n현재: ${currentKm}km / 목표: ${targetKm}km`;
+
+                // 멤버 비교한 결과가 있다면 추가
+                const currentCompareMembers = compareMembersBySport[currentSport] || [];
+                if (currentCompareMembers.length > 0) {
+                    boardText += `\n\n⚖️ 멤버 비교:`;
+                    
+                    const comparisons = [];
+                    
+                    // 현재 멤버 정보 추가
+                    comparisons.push({
+                        name: currentMember.name,
+                        rate: achievementRate
+                    });
+
+                    // 비교 멤버들 정보 조회
+                    for (const compareMember of currentCompareMembers) {
+                        const { data: compareData } = await supabaseClient
+                            .from('iron_mileages')
+                            .select('*')
+                            .eq('member_id', compareMember.id)
+                            .eq('year', currentYear)
+                            .eq('month', currentMonth)
+                            .eq('sport', currentSport);
+
+                        const { data: compareTargetRecord } = await supabaseClient
+                            .from('iron_member_records')
+                            .select('*')
+                            .eq('member_id', compareMember.id)
+                            .eq('year', currentYear)
+                            .eq('month', currentMonth)
+                            .eq('sport', currentSport)
+                            .single();
+
+                        const compareTotal = compareData ? compareData.reduce((sum, item) => sum + item.distance, 0) : 0;
+                        const compareTarget = compareTargetRecord ? compareTargetRecord.target_mileage : 0;
+                        const compareRate = compareTarget > 0 ? (compareTotal / compareTarget) * 100 : 0;
+
+                        comparisons.push({
+                            name: compareMember.name,
+                            rate: compareRate
+                        });
+                    }
+
+                    // 달성률 순으로 정렬
+                    comparisons.sort((a, b) => b.rate - a.rate);
+
+                    comparisons.forEach((comp, index) => {
+                        const rank = index + 1;
+                        const isCurrent = comp.name === currentMember.name;
+                        boardText += `\n${rank}. ${comp.name}: ${comp.rate.toFixed(1)}%${isCurrent ? ' ⭐' : ''}`;
+                    });
+                }
+
+                boardText += `\n\nhttps://i-like-jeju.github.io/iron-man`;
+
+                Kakao.Link.sendDefault({
+                    objectType: 'text',
+                    text: boardText,
+                    link: {
+                        mobileWebUrl: 'https://i-like-jeju.github.io/iron-man',
+                        webUrl: 'https://i-like-jeju.github.io/iron-man'
+                    },
+                    buttons: [
+                        {
+                            title: '웹으로 이동',
+                            link: {
+                                mobileWebUrl: 'https://i-like-jeju.github.io/iron-man',
+                                webUrl: 'https://i-like-jeju.github.io/iron-man'
+                            }
+                        }
+                    ]
+                });
+            } catch (error) {
+                console.error('카카오톡 공유 오류:', error);
+                alert('공유 중 오류가 발생했습니다.');
+            }
         }
 
         // 알림 표시
