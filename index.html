@@ -2056,11 +2056,43 @@
                         boardText += `\n현재: ${currentKm}km / 목표: ${targetKm}km`;
                     }
 
-                    // 해당 종목의 멤버 비교 (현재 멤버 + 해당 종목 비교 멤버)
+                    // 해당 종목의 멤버 비교
+                    let membersToCompare;
                     const compareMembersForSport = compareMembersBySport[sport] || [];
-                    const membersToCompare = [{ id: currentMember.id, name: currentMember.name, isDefault: true }, ...compareMembersForSport.map(m => ({ id: m.id, name: m.name, isDefault: false }))];
+                    if (compareMembersForSport.length > 0) {
+                        // 선택된 비교 멤버가 있으면: 현재 멤버 + 선택된 멤버
+                        membersToCompare = [{ id: currentMember.id, name: currentMember.name, isDefault: true }, ...compareMembersForSport.map(m => ({ id: m.id, name: m.name, isDefault: false }))];
+                    } else {
+                        // 선택하지 않은 종목: DB에서 해당 연·월·종목에 목표가 있는 멤버 조회
+                        const { data: targetRecords } = await supabaseClient
+                            .from('iron_member_records')
+                            .select('member_id, target_mileage')
+                            .eq('year', currentYear)
+                            .eq('month', currentMonth)
+                            .eq('sport', sport);
+                        if (targetRecords && targetRecords.length > 0) {
+                            membersToCompare = targetRecords.map(r => {
+                                const m = allMembers.find(a => a.id === r.member_id);
+                                return { id: r.member_id, name: m ? m.name : '알 수 없음', isDefault: r.member_id === currentMember.id, targetMileage: r.target_mileage };
+                            });
+                        } else {
+                            membersToCompare = [{ id: currentMember.id, name: currentMember.name, isDefault: true }];
+                        }
+                    }
                     const sportComparisons = [];
                     for (const mem of membersToCompare) {
+                        let mTargetVal = mem.targetMileage;
+                        if (mTargetVal === undefined) {
+                            const { data: mTargetRow } = await supabaseClient
+                                .from('iron_member_records')
+                                .select('target_mileage')
+                                .eq('member_id', mem.id)
+                                .eq('year', currentYear)
+                                .eq('month', currentMonth)
+                                .eq('sport', sport)
+                                .maybeSingle();
+                            mTargetVal = mTargetRow?.target_mileage ?? 0;
+                        }
                         const { data: mData } = await supabaseClient
                             .from('iron_mileages')
                             .select('distance')
@@ -2068,16 +2100,7 @@
                             .eq('year', currentYear)
                             .eq('month', currentMonth)
                             .eq('sport', sport);
-                        const { data: mTarget } = await supabaseClient
-                            .from('iron_member_records')
-                            .select('target_mileage')
-                            .eq('member_id', mem.id)
-                            .eq('year', currentYear)
-                            .eq('month', currentMonth)
-                            .eq('sport', sport)
-                            .maybeSingle();
                         const mTotal = (mData || []).reduce((sum, item) => sum + item.distance, 0);
-                        const mTargetVal = mTarget ? mTarget.target_mileage : 0;
                         const mRate = mTargetVal > 0 ? (mTotal / mTargetVal) * 100 : 0;
                         sportComparisons.push({ name: mem.name, rate: mRate, isCurrent: mem.isDefault });
                     }
