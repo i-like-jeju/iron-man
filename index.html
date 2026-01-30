@@ -1461,6 +1461,15 @@
                 }
             });
 
+            // y축 최대값: 가장 높은 달성률 기준 (100% 미만이면 100, 초과 시 최고값 기준으로 20 단위 올림)
+            let yMax = 100;
+            for (let i = 0; i < achievementRates.length; i++) {
+                const totalRate = achievementRates[i] + achievementRatesOver100[i];
+                if (totalRate > yMax) yMax = totalRate;
+            }
+            yMax = Math.ceil(yMax / 20) * 20;
+            if (yMax < 100) yMax = 100;
+
             // 기존 차트가 있으면 제거
             const chartCanvas = document.getElementById('yearlyChart');
             if (yearlyChartInstance) {
@@ -1478,16 +1487,16 @@
                         {
                             label: '달성률',
                             data: achievementRates,
-                            backgroundColor: '#fee500',
-                            borderColor: '#fee500',
+                            backgroundColor: '#4caf50',
+                            borderColor: '#4caf50',
                             borderWidth: 1,
                             borderRadius: 4
                         },
                         {
                             label: '100% 초과',
                             data: achievementRatesOver100,
-                            backgroundColor: '#4caf50',
-                            borderColor: '#4caf50',
+                            backgroundColor: '#fee500',
+                            borderColor: '#fee500',
                             borderWidth: 1,
                             borderRadius: 4
                         }
@@ -1526,7 +1535,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100,
+                            max: yMax,
                             stacked: true, // 스택 모드 활성화
                             ticks: {
                                 stepSize: 20,
@@ -1861,7 +1870,7 @@
                         ${!comp.isDefault ? `<button onclick="removeCompareMember('${comp.id}')" style="background: #ff4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;">제거</button>` : ''}
                     </div>
                     <div class="progress-bar" style="height: 30px; position: relative; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1);">
-                        <div class="progress-fill" style="width: ${rate}%; height: 100%; background: ${comp.isDefault ? '#667eea' : '#fee500'}; transition: width 0.3s ease; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+                        <div class="progress-fill" style="width: ${rate}%; height: 100%; background: ${comp.isDefault ? '#667eea' : '#4caf50'}; transition: width 0.3s ease; position: absolute; top: 0; left: 0; z-index: 1;"></div>
                         <div class="progress-text" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: ${rate >= 50 ? '#fff' : '#333'}; text-shadow: ${rate >= 50 ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none'}; pointer-events: none; z-index: 2;">
                             ${rateText}
                         </div>
@@ -1999,8 +2008,8 @@
             }
         }
 
-        // 카카오톡 공유
-        function shareKakao() {
+        // 카카오톡 공유 (비교 가능한 모든 종목 포함)
+        async function shareKakao() {
             if (!currentMember) {
                 alert('멤버를 먼저 선택하세요.');
                 return;
@@ -2012,69 +2021,66 @@
             let boardText = `🦾 나도 철인 돼보카? 현황\n\n${currentMember.name}님의 ${currentYear}년 ${currentMonth}월 목표 달성 현황을 확인해보세요!`;
 
             try {
-                // 화면에 그려진 멤버의 월별 달성률 정보 가져오기
-                const progressContainer = document.getElementById('progressContainer');
-                if (progressContainer && progressContainer.innerHTML) {
-                    // 진행률 텍스트에서 달성률 추출
-                    const progressText = progressContainer.querySelector('.progress-text');
-                    if (progressText) {
-                        const rateText = progressText.textContent.trim(); // 예: "85.5%"
-                        const rateValue = parseFloat(rateText.replace('%', ''));
-                        
-                        // 현재/목표 거리 정보 추출
-                        const distanceText = progressContainer.textContent;
-                        const currentMatch = distanceText.match(/현재:\s*([\d.]+)km/);
-                        const targetMatch = distanceText.match(/목표:\s*([\d.]+)km/);
-                        
-                        if (rateText && currentMatch && targetMatch) {
-                            boardText += `\n\n📊 ${currentSport} 목표 달성률: ${rateText}`;
-                            boardText += `\n현재: ${currentMatch[1]}km / 목표: ${targetMatch[1]}km`;
-                        }
+                // 멤버가 등록한 모든 종목 (비교 가능한 종목)
+                const memberSports = currentMember.sports ? currentMember.sports.split(',').map(s => s.trim()).filter(Boolean) : [];
+                const sportsToShow = memberSports.length > 0 ? memberSports : ['수영', '러닝', '사이클'];
+
+                // 종목별 달성률 조회
+                for (const sport of sportsToShow) {
+                    const { data: monthlyData } = await supabaseClient
+                        .from('iron_mileages')
+                        .select('distance')
+                        .eq('member_id', currentMember.id)
+                        .eq('year', currentYear)
+                        .eq('month', currentMonth)
+                        .eq('sport', sport);
+
+                    const { data: targetRecord } = await supabaseClient
+                        .from('iron_member_records')
+                        .select('target_mileage')
+                        .eq('member_id', currentMember.id)
+                        .eq('year', currentYear)
+                        .eq('month', currentMonth)
+                        .eq('sport', sport)
+                        .maybeSingle();
+
+                    const totalMileage = (monthlyData || []).reduce((sum, item) => sum + item.distance, 0);
+                    const targetMileage = targetRecord ? targetRecord.target_mileage : 0;
+                    const achievementRate = targetMileage > 0 ? (totalMileage / targetMileage) * 100 : 0;
+                    const currentKm = (Math.floor(totalMileage / 100) / 10).toFixed(1);
+                    const targetKm = (Math.floor(targetMileage / 100) / 10).toFixed(1);
+                    const rateText = targetMileage > 0 ? `${Math.min(achievementRate, 999.9).toFixed(1)}%` : '목표 없음';
+
+                    boardText += `\n\n📊 ${sport} 목표 달성률: ${rateText}`;
+                    if (targetMileage > 0) {
+                        boardText += `\n현재: ${currentKm}km / 목표: ${targetKm}km`;
                     }
                 }
 
-                // 화면에 그려진 멤버 비교 결과 가져오기
+                // 화면에 그려진 멤버 비교 결과 가져오기 (선택된 종목)
                 const comparisonContainer = document.getElementById('comparisonContainer');
                 if (comparisonContainer && comparisonContainer.children.length > 0) {
                     const comparisons = [];
-                    
-                    // 각 비교 카드에서 정보 추출
                     const comparisonCards = comparisonContainer.querySelectorAll('.comparison-card');
                     comparisonCards.forEach(card => {
-                        // 멤버 이름 추출 (h4 태그에서)
                         const nameElement = card.querySelector('h4');
                         if (nameElement) {
-                            let memberName = nameElement.textContent.trim();
-                            // ⭐ 제거
-                            memberName = memberName.replace(/⭐\s*/, '').trim();
-                            
-                            // 달성률 추출 (progress-text에서)
+                            let memberName = nameElement.textContent.trim().replace(/⭐\s*/, '').trim();
                             const progressText = card.querySelector('.progress-text');
                             if (progressText) {
                                 const rateText = progressText.textContent.trim();
                                 const rateValue = parseFloat(rateText.replace('%', ''));
-                                
-                                // 현재 멤버인지 확인 (⭐ 표시 또는 isDefault 스타일로)
                                 const isCurrent = memberName === currentMember.name || nameElement.textContent.includes('⭐');
-                                
-                                comparisons.push({
-                                    name: memberName,
-                                    rate: rateValue,
-                                    isCurrent: isCurrent
-                                });
+                                comparisons.push({ name: memberName, rate: rateValue, isCurrent });
                             }
                         }
                     });
 
                     if (comparisons.length > 0) {
-                        boardText += `\n\n⚖️ 멤버 비교:`;
-                        
-                        // 달성률 순으로 정렬
+                        boardText += `\n\n⚖️ 멤버 비교 (${currentSport}):`;
                         comparisons.sort((a, b) => b.rate - a.rate);
-
                         comparisons.forEach((comp, index) => {
-                            const rank = index + 1;
-                            boardText += `\n${rank}. ${comp.name}: ${comp.rate.toFixed(1)}%${comp.isCurrent ? ' ⭐' : ''}`;
+                            boardText += `\n${index + 1}. ${comp.name}: ${comp.rate.toFixed(1)}%${comp.isCurrent ? ' ⭐' : ''}`;
                         });
                     }
                 }
